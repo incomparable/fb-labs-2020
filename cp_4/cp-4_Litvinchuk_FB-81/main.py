@@ -16,181 +16,142 @@ def NSD(a,b):
     r = euclid_NSD(a,b)
     return r[0]
 
-def mod_pow(x, a, m):
-    bin_nums = [int(n) for n in bin(a)[2:] ]
-    r = 1
-    for n in bin_nums:
-        r = r ** 2 % m
-        r = r * (x ** n) % m 
-    return r 
-
 def obernenyu(x,m):
-    r = euclid_NSD(x,m)
-    if r[0]==1:
-      if x<=m: return r[1]
-      if x>m: return r[2]
+    nsd = euclid_NSD(x,m)
+    if nsd[0]==1:
+      if x<=m: return nsd[1]
+      if x>m: return nsd[2]
     else: return None
 
-def miller_rabin_iter(t, x):
-    if NSD(t, x) != 1:
-        return False
-    d = t - 1
-    while d % 2 == 0:
-        d //= 2
-    if (m := mod_pow(x, d, t)) == 1 or m == t - 1:
-        return True
-    while d < t - 1:
-        iter_result = mod_pow(x, d, t)
-        if iter_result == t - 1:
-            return True
-        if iter_result == 1:
-            return False
-        d *= 2
-    return False
 
 
-def Miller_Rabin_test(p):
-    k=40
-    for i in range(0, k):
-        x = gen_random(2, p - 1)
-        if not miller_rabin_iter(p, x):
-            return False 
-    else:
-        return True
+def Miller_Iter(d,p):
+    a = 2 + gen_random(1,p-4);
+    x = pow(a,d,p);
+    if (x==1 or x==p-1):
+        return True;
+        
+    while (d!=p-1):
+        x=(x*x)%p;
+        if (x==1):
+            return False;
+        if (x==p-1):
+            return True ;   
+        d *=2;
 
-def gen_prime(l):
-    min = 2**(l-1)+1
-    max = 2**l-1
-    while True:
-       x = gen_random(min,max)
-       for i in range(0,(max-x+(1-x%2))//2):
-           if x % 2 == 0:
-              x+=1
-           if small_div_test(x):
-              if Miller_Rabin_test(x):
-                 return x
-           x+=2
+    return False;
 
-def small_div_test(n):
-    primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,
-                    53,59,61,67,71,73,79,83,89,97,101,103, 107, 
-                    109, 113, 127, 131, 137, 139, 149, 151, 157,
-                    163, 167, 173, 179, 181, 191, 193, 197, 199, 
-                    211, 223, 227, 229, 233, 239, 241, 251, 257,
-                    263, 269, 271, 277, 281, 283, 293, 307, 311, 
-                    313, 317, 331, 337, 347, 349, 353, 359, 367, 
-                    373, 379, 383, 389, 397, 401, 409, 419, 421,
-                    431, 433, 439, 443, 449, 457, 461, 463, 467, 
-                    479, 487, 491, 499, 503]
-    for i in primes:
-        if n%i==0 and n//i!=1: return False
-    return True
+
+def Miller_test(p):
+    k = 40
+    prosti = [2, 3, 5, 7, 11, 13, 17, 19]
+    for i in prosti:
+        if p%i == 0:
+            return False;
+
+    d = p-1;
+    while (d%2 == 0):
+        d //= 2;
+
+    for i in range(k):
+        if (Miller_Iter(d,p)==False):
+            return False;
+
+    return True;
+
+
+def gen_prime(l): #>256
+    a = 2**(l-1)+1
+    b = 2**l-1
+    i = 0
+    while i==0:
+        x = gen_random(a,b)
+        if Miller_test(x):
+            i = 1
+    return x
+
 
 def Gen_Pair_of_Keys(l):
-    p = gen_prime(l)
-    print(f"P = {p}")
-    q = gen_prime(l)
+    p = gen_prime(l);
+    q = gen_prime(l);
     while p == q:
-        q = gen_prime(l)
-    print(f"Q = {q}")
+        q = gen_prime(l);
     n = p*q
-    phi_n = (p-1)*(q-1)
-    e = gen_random(2,phi_n-1)
-    while NSD(e,phi_n)!=1:
-        e = gen_random(2,phi_n-1)
-    d = obernenyu(e,phi_n)
-    if d < 0:
-        d = d + phi_n
-    open_key = [e,n]
-    private_key = [d,n]
+    fi = (p-1)*(q-1)
 
-    return [open_key,private_key]
+    e = 2 + gen_random(1,fi-3);
+    nsd = euclid_NSD(e,fi);
+    while nsd[0]!=1:
+        e = 2 + gen_random(1,fi-3);
+        nsd = euclid_NSD(e,fi);
 
+    d = obernenyu(e,fi)
 
-def Encrypt(M,open_key):
-    return pow(M,open_key[0],open_key[1])
-
-def Decrypt(M,private_key):
-    return pow(M,private_key[0],private_key[1])
-
-def Sign(M,private_key):
-    s = Encrypt(M,private_key)
-    s_m = [M,s]
-    return s_m
-
-def Verify(s_m,open_key):
-    if s_m[0] == pow(s_m[1],open_key[0],open_key[1]):
-        return True
-    else: return False
+    return [n,e,d]
 
 
-def SendKey(M,private_key_A,open_key_B):
-    e_m = Encrypt(M,open_key_B)
-    s   = Sign(M,private_key_A)
-    e_s = Encrypt(s[1],open_key_B)
-    return [e_m, e_s]
+def Encrypt(M,e,n):
+    return pow(M,e,n);
 
-def ReceiveKey(M,private_key_B,open_key_A):
-    e_m = M[0]
-    e_s = M[1]
-    m = Decrypt(e_m,private_key_B)
-    s = Decrypt(e_s,private_key_B)
-    if Verify([m,s],open_key_A):
-        return m
+
+def Decrypt(C,d,n):
+    return pow(C,d,n);
+
+
+def Sign(M,d,n):
+    signature = pow(M,d,n);
+    return [M,signature];
+
+
+
+def Verify(M,signature,e,n):
+    if (M==pow(signature,e,n)):
+        return True;
+    else:
+        return False;
+    
+
+def SendKey(k,Ad,An,Be,Bn):
+    s = pow(k,Ad,An);
+    s1 = pow(s,Be,Bn);
+    k1 = pow(k,Be,Bn);
+    return [k1,s1]
+
+
+def ReceiveKey(k1,s1,Bd,Bn,Ae,An):
+    k = pow(k1,Bd,Bn);
+    s = pow(s1,Bd,Bn);
+    if Verify(k,s,Ae,An):
+        return k
     else:
         return None
 
 
 
-print('ABONENT A:')
+M = gen_prime(256)
+print("M = "+str(M)+"\n")
+
+
 A = Gen_Pair_of_Keys(256)
-print(f"E = {A[0][0]}")
-print(f"D = {A[1][0]}")
-print(f"N = {A[0][1]}\n")
-
-print('ABONENT B:')
 B = Gen_Pair_of_Keys(256)
-print(f"E = {B[0][0]}")
-print(f"D = {B[1][0]}")
-print(f"N = {B[0][1]}\n")
+while B[0]<A[0]:
+    B = Gen_Pair_of_Keys(256)
 
-mess = gen_prime(255)
-print(f"MESSAGE = {mess}")
-d_mess=Encrypt(mess,A[0])
-print(f"ENCRYPTED MESSAGE WITH A PUB KEY = {d_mess}")
-print(f"DECRYPTED MESSAGE WITH A PRIV KEY = {Decrypt(d_mess,A[1])}")
-d_mess=Encrypt(mess,B[0])
-print(f"ENCRYPTED MESSAGE WITH B PUB KEY = {d_mess}")
-print(f"DECRYPTED MESSAGE WITH B PRIV KEY = {Decrypt(d_mess,B[1])}\n")
+print(A)
+print(B)
 
 
-print('SIGN WITH A PRIVATE KEY:')
-s=Sign(mess,A[1])
-print(f"MESSAGE = {s[0]}")
-print(f"SIGNATURE = {s[1]}")
-print(f"VERIFIED: {Verify(s,A[0])}\n")
+server_n = int("0xC8C66D5F3124CFF18A6D710BA138AB8E8FB29A500368456D3759993F27366803",16)
+server_e = int("0x10001",16)
+print("server_e = "+str(server_e))
+print("server_n = "+str(server_n)+"\n")
 
 
-print('SENDKEY, RECEIVEKEY PROTOCOL (A TO B):')
-k = gen_prime(255)
-print(f"SHARED KEY = {k}")
-m=SendKey(k,A[1],B[0])
-print(f"ENCRYPTED MESSAGE = {m[0]}")
-print(f"SIGNATURE = {m[1]}")
-print(f"KEY = {ReceiveKey(m,B[1],A[0])}\n\n")
+print(Encrypt(M,server_e,server_n))
 
 
-print('SENDKEY, RECEIVEKEY PROTOCOL (A TO SERVER):')
-n=int("0xD75B159AD05869959926A0BE751038E07C93B6FB11AF6BE21C1F24D7EE120B7D",16)
-e = int("0x10001",16)
-print(f"SERVER E = {e}")
-print(f"SERVER N = {n}")
-k = gen_prime(255)
-print(f"SHARED KEY = {k}")
-m = SendKey(k, A[1], [e,n])
-print(f"ENCRYPTED MESSAGE = {m[0]}")
-print(f"SIGNATURE = {m[1]}\n")
+print(Verify(int("75BCD15",16),int("75BE7D13A4011F9C34AABECE886256D5191B39976C310E6F49EF2A3168692924",16),server_e,server_n))
 
-URL = 'http://asymcryptwebservice.appspot.com/rsa/receiveKey?key={}&signature={}&modulus={}&publicExponent={}'.format(hex(m[0])[2:], hex(m[1])[2:], hex(A[0][1])[2:], hex(A[0][0])[2:])
-print(URL) 
+Sk = SendKey(123,A[2],A[0],B[1],B[0]);
+print(ReceiveKey(Sk[0],Sk[1],B[2],B[0],A[1],A[0]))
 
