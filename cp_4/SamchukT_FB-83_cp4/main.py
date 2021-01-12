@@ -1,20 +1,9 @@
 import random
 
-def gcd(a, b): #НСД
+def gcd(a, b):
     while a != 0:
         a, b = b % a, a
     return b
-
-def power(x, a, n):
-    bin_num = bin(a)
-    bin_num = bin_num[2:]
-    k = len(bin_num)
-    y = 1
-    for i in range(k):
-        y = (y ** 2) % n
-        y = (y * x ** int(bin_num[i])) % n
-    # print(y)
-    return y
 
 def euclid(a, b): #роширений алгоритм евкліда
     if (b == 0):
@@ -53,82 +42,83 @@ def MilleraRabina(n, k):
     return True
 
 def GenerateKeyPair(n):
-    while True:
-        pair1 = []
-        i = 0
-        f = open('log.txt', 'w')
-        while i != 2:
-            c = random.getrandbits(n-1) + (1 << n-1)
-            if not MilleraRabina(c, 10):
-                back = False
-                while back is False:
-                    c = random.getrandbits(n-1) + (1 << n-1)
-                    if MilleraRabina(c, 10):
-                        pair1.append(c)
-                        i += 1
-                        back = True
-                    else:
-                        f.write(str(hex(c)) + " isn't prime \n")
-        return pair1
 
-def Encrypt(text, epsi, n):
-    if text > n - 1:
-        print('Long message')
-        return 0
-    c_text = power(text, epsi, n)
-    return c_text
+    pq = []
+    e = 2 ** 16 + 1
+    while len(pq) != 2:
+        a = random.getrandbits(n-1) + (1 << n-1)
+        if not MilleraRabina(a, 10):
+            back = False
+            while back is False:
+                a = random.getrandbits(n - 1) + (1 << n - 1)
+                if MilleraRabina(a, 10):
+                    pq.append(a)
+                    back = True
+    n = pq[0] * pq[1]
+    public_key = [e, n]
+    fi = (pq[0] - 1) * (pq[1] - 1)
+    private_key = ober(e, fi)
+    return public_key, private_key
 
-def Decrypt(c_text, d, n):
-    d_text = power(c_text, d, n)
-    return d_text
+def Encrypt(M, publickey):
+    C = pow(M, publickey[0], publickey[1])
+    return C
 
-def Verify(sign_text, n, epsi, message):
-    m = Encrypt(sign_text, epsi, n)
-    if m == message:
-        print("Verified")
+def Decrypt(C, private_key, public_key):
+    M = pow(C, private_key, public_key)
+    return M
+
+def Sign(M, private_key, public_key):
+    signature = pow(M, private_key, public_key[1])
+    S = [M, signature]
+    return S
+
+def Verify(KS, publickey):
+    message = pow(KS[1], publickey[0], publickey[1])
+    if KS[0] == message:
         return True
     else:
-        print("not verified")
         return False
 
-def Sign(text, d, n):
-    sign_text = power(text, d, n)
-    return sign_text
+def SendKey(M, privatkeyA, publickeyA, publickeyB):
+    S = Decrypt(M, privatkeyA, publickeyA[1])
+    S1 = Encrypt(S, publickeyB)
+    k1 = Encrypt(M, publickeyB)
+    return [k1, S1]
 
-def SendKey(m, n1, epsi1):
-    cyfr_m = Encrypt(m, epsi1, n1)
-    p_q_alis = GenerateKeyPair(265)
-    n = p_q_alis[0] * p_q_alis[1]
-    while n > n1:
-        p_q_alis = GenerateKeyPair(256)
-        n = p_q_alis[0] * p_q_alis[1]
-    znach = (p_q_alis[0] - 1) * (p_q_alis[1] - 1)  # olier
-    d = ober(epsi, znach)
-    sign_text = Sign(m, d, n)
-    sign_text = Encrypt(sign_text, epsi1, n1)
-    return cyfr_m, sign_text, n
+def ReceiveKey(privatekeyB, publickeyB, publickeyA, KS):
 
-def ReceiveKey(cyfr_m, signature, epsi, n):
-    M = Decrypt(cyfr_m, d1, n1)
-    S = Decrypt(signature, d1, n1)
-    M1 = Verify(S, n, epsi, M)
-    return M, M1
+    k = Decrypt(KS[0], privatekeyB, publickeyB[1])
+    s = Decrypt(KS[1], privatekeyB, publickeyB[1])
+    ks = [k, s]
+    if Verify(ks, publickeyA) is True:
+        return ks[0]
+    else:
+        return False
+
 
 if __name__ == "__main__":
-    text = 5678
-    p_q_bob = GenerateKeyPair(265)
-    n1 = p_q_bob[0] * p_q_bob[1]
-    epsi = 2 ** 16 + 1
-    znach = (p_q_bob[0] - 1) * (p_q_bob[1] - 1) #olier
-    d1 = ober(epsi, znach)
 
-    cyfr_text, signature, n = SendKey(text, n1, epsi)
-    print(ReceiveKey(cyfr_text, signature, epsi, n))
-#########################
-    epsi = 2 ** 16 + 3
-    epsi1 = 2 ** 16 + 1
-    n1 = (int('8E17C12D8D13DA9FF45A488EA41D0F764604C5729F0F9DA991295D8BFE135C70F33D6439725F1BC4249D8D2D6A2B7776D16B67F4458A6D2442367F90F5776FB7', 16))
-    cyfr_text, signature, n = SendKey(text, n1, epsi1)
-    print(hex(cyfr_text))
-    print(hex(signature))
-    print(hex(n))
+    public_keyA, private_keyA = GenerateKeyPair(256)
+    public_keyB, private_keyB = GenerateKeyPair(256)
+
+    while public_keyA[1] > public_keyB[1]:
+        public_keyB, private_keyB = GenerateKeyPair(256)
+
+    text = 234567
+    # C = Encrypt(text, public_keyA)
+    # M = Decrypt(C, private_keyA, public_keyA)
+    # print(M)
+
+    ks = SendKey(text, private_keyA, public_keyA, public_keyB)
+    print(ks)
+    print(ReceiveKey(private_keyB, public_keyB, public_keyA, ks))
+    #################################
+    n1 = int('9436B74E95CC6EB2FDFF568915C66099E0BFA07E1F9E35324C16AD87A40334F4EAD96CFE84001721B35906E6B99C43DB2F3C46860CC4A6AE010EA57B179298C9', 16)
+
+    public_keyB[1] = n1
+    ks2 = SendKey(text, private_keyA, public_keyA, public_keyB)
+
+    print(hex(ks2[0]))
+    print(hex(ks2[1]))
+    print(hex(public_keyA[1]))
