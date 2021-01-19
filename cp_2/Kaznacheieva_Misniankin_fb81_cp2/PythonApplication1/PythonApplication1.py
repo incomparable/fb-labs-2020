@@ -18,7 +18,7 @@ def encrypt(file,result_file, key):
     fin = open (file, "rt", encoding="utf-8")
     fout = open(result_file, "wt", encoding="utf-8")
     text = fin.read()
-    print(text)
+    #print(text)
     txt=''
     n=0
     for i in range(0, len(text)):
@@ -53,8 +53,9 @@ def count_frequency(text):
         frequency[i] = count[i]
     return frequency
 
-def count_index(text):
-    
+def count_index(filename):
+    f = open(filename)
+    text = f.read()
     leng = len(text)
     if leng == 1:
         result = 1 / ((leng) * leng)
@@ -66,6 +67,7 @@ def count_index(text):
     for letter in freq:
         sum += freq[letter] * (freq[letter] - 1)
     c=result*sum
+    print(c)
     return c
 
 def divided(fulltext, n):
@@ -119,5 +121,6 @@ def search_key(filename, len_of_key):
 
 
 #find_key('text.txt')
-search_key('text.txt', 15)
-#encrypt('small.txt', 'decryted.txt', key_5)
+#search_key('text.txt', 15)
+encrypt('justtext.txt', 'encryptedst.txt', key_5)
+count_index('encryptedst.txt')
